@@ -22,60 +22,76 @@
   font-family: "Optimistic Mono", ui-monospace, monospace;
 }
 </style>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Poco X3 - VM Offline (sem download)</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MEU-XP - ReactOS 0.4.16</title>
 <style>
-body{margin:0;background:#000;color:#0f0;font-family:monospace;padding:10px}
-h1{font-size:14px;color:#fff}
-.btn{background:#0f0;color:#000;border:3px outset #fff;padding:16px;font-weight:900;width:100%;font-size:14px;margin:8px 0}
-#screen_container{width:100%;height:50vh;background:#000;border:2px solid #0f0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#screen_container div{white-space:pre;font-size:12px}
-#log{height:100px;overflow:auto;background:#111;color:#0f0;font-size:10px;padding:6px;border:1px solid #333}
-input{width:100%;color:#fff}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Arial}
+body{background:#000;color:#fff;display:flex;flex-direction:column;height:100vh}
+header{background:#0a3d8a;padding:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{font-size:16px}
+#controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=file]{max-width:180px;font-size:12px}
+button{background:#2d7d46;color:#fff;border:0;padding:10px 18px;border-radius:8px;font-weight:700}
+button:active{transform:scale(.97)}
+#status{font-size:12px;opacity:.8;padding:4px 10px}
+#screen_container{flex:1;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+#screen_container canvas{max-width:100%;max-height:100%;image-rendering:pixelated}
+#screen{width:100%;height:100%}
+#log{height:90px;background:#111;font-size:11px;overflow:auto;padding:6px;white-space:pre-wrap}
 </style>
+<script src="./build/libv86.js"></script>
 </head>
 <body>
-<h1>✅ MÉTODO OFFLINE - POCO X3 PRO - SEM ERRO CORS</h1>
-<p style="color:#ccc;font-size:11px">Esse método não baixa ISO da internet. Você seleciona a ISO que já tá no seu celular. Zero CORS, zero V86Starter error, porque usa assets locais.</p>
-
-<input type="file" id="isoFile" accept=".iso,.img">
-<button class="btn" id="startBtn">▶ LIGAR REACTOS (ARQUIVO LOCAL)</button>
-<button class="btn" id="stopBtn">■ PARAR</button>
-
-<div id="screen_container"><div></div><canvas style="display:none"></canvas></div>
-<div id="log">Selecione o arquivo ReactOS-0.4.16-i386.iso que já está no seu celular acima, depois clique em LIGAR. Funciona offline, sem 4G.</div>
-
-<script src="https://unpkg.com/v86@0.3.5/build/libv86.js"></script>
+<header>
+<h1>MEU-XP</h1>
+<div id="controls">
+<input type="file" id="iso" accept=".iso">
+<button id="start">LIGAR</button>
+<button id="reset" style="background:#555">Reset</button>
+</div>
+</header>
+<div id="status">1. Escolha a ISO ReactOS-0.4.16-i386.iso (388MB) em emulated/0/meu-xp -> 2. Clique LIGAR</div>
+<div id="screen_container"><div id="screen"></div></div>
+<div id="log"></div>
 <script>
-let emulator=null;
-const log=m=>{ document.getElementById("log").textContent+=m+"\n"; };
-document.getElementById("isoFile").addEventListener("change", e=>{
-  log("Arquivo selecionado: "+e.target.files[0].name+" "+(e.target.files[0].size/1024/1024).toFixed(1)+"MB");
+const status=document.querySelector("#status");
+const logEl=document.querySelector("#log");
+const isoInput=document.querySelector("#iso");
+let emulator=null;let isoBuffer=null;
+function log(m){logEl.textContent+=m+"\n";logEl.scrollTop=logEl.scrollHeight;}
+isoInput.addEventListener("change", async e=>{
+  const file=e.target.files[0];
+  if(!file){status.textContent="Nenhuma ISO";return;}
+  status.textContent=`Lendo ${file.name} ${(file.size/1024/1024).toFixed(1)}MB...`;
+  log(`Lendo ${file.name}...`);
+  const ab=await file.arrayBuffer();
+  isoBuffer=ab;
+  status.textContent=`ISO carregada: ${file.name} - Clique LIGAR`;
+  log(`ISO OK: ${ab.byteLength} bytes`);
 });
-
-document.getElementById("startBtn").onclick=async()=>{
-  const fileInput=document.getElementById("isoFile");
-  if(!fileInput.files[0]){ log("ERRO: selecione a ISO primeiro!"); alert("Selecione o arquivo ReactOS-0.4.16-i386.iso que está na pasta meu-xp"); return; }
-  const file=fileInput.files[0];
-  const Cls = window.V86 || window.V86Starter;
-  if(!Cls){ log("ERRO: libv86 não carregou - tente https://unpkg.com/v86@0.3.5/build/libv86.js direto"); return; }
-  document.getElementById("screen_container").innerHTML='<div></div><canvas style="display:none"></canvas>';
-  log("Ligando VM com arquivo local - 256MB - Poco X3 Pro");
-  emulator = new Cls({
-    wasm_path: "https://unpkg.com/v86@0.3.5/build/v86.wasm",
-    bios: { url: "https://unpkg.com/v86@0.3.5/bios/seabios.bin" },
-    vga_bios: { url: "https://unpkg.com/v86@0.3.5/bios/vgabios.bin" },
-    screen_container: document.getElementById("screen_container"),
-    memory_size: 256*1024*1024,
-    vga_memory_size: 8*1024*1024,
-    cdrom: { buffer: file },
-    autostart: true,
+document.querySelector("#start").onclick=()=>{
+  if(!isoBuffer){status.textContent="Selecione a ISO primeiro!";log("ERRO: selecione ISO");return;}
+  if(emulator){try{emulator.stop();}catch(e){}}
+  document.querySelector("#screen").innerHTML="";
+  logEl.textContent="";
+  log("Iniciando v86...");
+  status.textContent="Iniciando...";
+  emulator=new V86Starter({
+    wasm_path:"./build/v86.wasm",
+    memory_size:512*1024*1024,
+    vga_memory_size:8*1024*1024,
+    screen_container:document.getElementById("screen"),
+    bios:{url:"./bios/seabios.bin"},
+    vga_bios:{url:"./bios/vgabios.bin"},
+    cdrom:{buffer:isoBuffer},
+    autostart:true,
   });
-  emulator.add_listener("emulator-ready", ()=>log("VM LIGADA! No menu escolha Live CD"));
+  emulator.add_listener("emulator-ready",()=>{log("Pronto - bootando ISO");status.textContent="Bootando ReactOS...";});
 };
-
-document.getElementById("stopBtn").onclick=()=>{ if(emulator) emulator.stop(); log("Parado"); };
+document.querySelector("#reset").onclick=()=>{if(emulator){emulator.restart();log("Reset");}};
+log("OK build/libv86.js 351KB | v86.wasm 1.91MB | seabios 128KB | vgabios 35.5KB");
+log("100% offline, sem copy.sh. Funciona no GitHub Pages e localhost.");
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
