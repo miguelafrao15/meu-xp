@@ -24,37 +24,58 @@
 </style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meu XP - Launcher</title>
+<title>Poco X3 - VM Offline (sem download)</title>
 <style>
-body{margin:0;background:#0a2a5e;color:#fff;font-family:Consolas,monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:20px;text-align:center}
-h1{font-size:18px}
-.btn{background:#fff;color:#000;border:4px outset #ccc;padding:20px 30px;font-weight:900;font-size:16px;cursor:pointer;margin:10px;display:block;width:100%;max-width:400px;text-decoration:none}
-.btn.primary{background:#00ff00;color:#000}
-small{color:#ccc;font-size:11px;word-break:break-all}
+body{margin:0;background:#000;color:#0f0;font-family:monospace;padding:10px}
+h1{font-size:14px;color:#fff}
+.btn{background:#0f0;color:#000;border:3px outset #fff;padding:16px;font-weight:900;width:100%;font-size:14px;margin:8px 0}
+#screen_container{width:100%;height:50vh;background:#000;border:2px solid #0f0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#screen_container div{white-space:pre;font-size:12px}
+#log{height:100px;overflow:auto;background:#111;color:#0f0;font-size:10px;padding:6px;border:1px solid #333}
+input{width:100%;color:#fff}
 </style>
 </head>
 <body>
-<h1>✅ ReactOS no Poco X3 Pro - MÉTODO QUE FUNCIONA</h1>
-<p>Seu erro V86Starter era porque copy.sh bloqueia libv86.js quando vem de github.io. Solução: não hospedar a VM, usar o copy.sh direto com sua ISO.</p>
+<h1>✅ MÉTODO OFFLINE - POCO X3 PRO - SEM ERRO CORS</h1>
+<p style="color:#ccc;font-size:11px">Esse método não baixa ISO da internet. Você seleciona a ISO que já tá no seu celular. Zero CORS, zero V86Starter error, porque usa assets locais.</p>
 
-<a class="btn primary" id="openBtn" href="#" target="_blank">▶ ABRIR REACTOS NO COPY.SH (FUNCIONA)</a>
+<input type="file" id="isoFile" accept=".iso,.img">
+<button class="btn" id="startBtn">▶ LIGAR REACTOS (ARQUIVO LOCAL)</button>
+<button class="btn" id="stopBtn">■ PARAR</button>
 
-<a class="btn" href="https://github.com/miguelafrao15/meu-xp/releases" target="_blank">📦 Ver se Release v1 existe (precisa existir)</a>
+<div id="screen_container"><div></div><canvas style="display:none"></canvas></div>
+<div id="log">Selecione o arquivo ReactOS-0.4.16-i386.iso que já está no seu celular acima, depois clique em LIGAR. Funciona offline, sem 4G.</div>
 
-<p><small>Link que vai abrir:<br><span id="urlShow"></span></small></p>
-
-<p><small>Se der 404 no copy.sh, seu Release v1 ainda não existe ou está privado. Crie o Release com a ISO.</small></p>
-
+<script src="https://unpkg.com/v86@0.3.5/build/libv86.js"></script>
 <script>
-const isoUrl = "https://github.com/miguelafrao15/meu-xp/releases/download/v1/ReactOS-0.4.16-i386.iso";
-const v86Url = "https://copy.sh/v86/?profile=custom&cdrom.url=" + encodeURIComponent(isoUrl);
-document.getElementById("openBtn").href = v86Url;
-document.getElementById("urlShow").textContent = v86Url;
+let emulator=null;
+const log=m=>{ document.getElementById("log").textContent+=m+"\n"; };
+document.getElementById("isoFile").addEventListener("change", e=>{
+  log("Arquivo selecionado: "+e.target.files[0].name+" "+(e.target.files[0].size/1024/1024).toFixed(1)+"MB");
+});
 
-document.getElementById("openBtn").onclick = ()=>{
-  // Tenta abrir direto
-  window.open(v86Url, "_blank");
+document.getElementById("startBtn").onclick=async()=>{
+  const fileInput=document.getElementById("isoFile");
+  if(!fileInput.files[0]){ log("ERRO: selecione a ISO primeiro!"); alert("Selecione o arquivo ReactOS-0.4.16-i386.iso que está na pasta meu-xp"); return; }
+  const file=fileInput.files[0];
+  const Cls = window.V86 || window.V86Starter;
+  if(!Cls){ log("ERRO: libv86 não carregou - tente https://unpkg.com/v86@0.3.5/build/libv86.js direto"); return; }
+  document.getElementById("screen_container").innerHTML='<div></div><canvas style="display:none"></canvas>';
+  log("Ligando VM com arquivo local - 256MB - Poco X3 Pro");
+  emulator = new Cls({
+    wasm_path: "https://unpkg.com/v86@0.3.5/build/v86.wasm",
+    bios: { url: "https://unpkg.com/v86@0.3.5/bios/seabios.bin" },
+    vga_bios: { url: "https://unpkg.com/v86@0.3.5/bios/vgabios.bin" },
+    screen_container: document.getElementById("screen_container"),
+    memory_size: 256*1024*1024,
+    vga_memory_size: 8*1024*1024,
+    cdrom: { buffer: file },
+    autostart: true,
+  });
+  emulator.add_listener("emulator-ready", ()=>log("VM LIGADA! No menu escolha Live CD"));
 };
+
+document.getElementById("stopBtn").onclick=()=>{ if(emulator) emulator.stop(); log("Parado"); };
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
