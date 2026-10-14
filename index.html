@@ -24,98 +24,138 @@
 </style>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>MEU-XP LITE</title>
+<title>MEU-XP - Importador</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Arial}
 body{background:#000;color:#fff;display:flex;flex-direction:column;height:100vh}
-header{background:#0a3d8a;padding:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-h1{font-size:15px}
-input[type=file]{font-size:11px;max-width:160px}
-button{background:#2d7d46;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:700}
-#status{background:#111;padding:6px 10px;font-size:11px;min-height:28px}
-#screen_container{flex:1;background:#000;display:flex;align-items:center;justify-content:center;position:relative}
+header{background:#0a3d8a;padding:12px;display:flex;flex-direction:column;gap:10px}
+h1{font-size:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=file]{font-size:12px;color:#fff}
+button{background:#2d7d46;color:#fff;border:0;padding:12px 18px;border-radius:8px;font-weight:700;font-size:14px}
+button:disabled{opacity:.4}
+#status{background:#111;padding:8px 10px;font-size:12px;min-height:32px;line-height:1.4}
+#checks{display:flex;gap:8px;flex-wrap:wrap;font-size:11px}
+.badge{background:#222;padding:4px 8px;border-radius:12px}
+.badge.ok{background:#1a5c2a;color:#7CFC99}
+.badge.no{background:#5c1a1a;color:#ff9a9a}
+#screen_container{flex:1;background:#000;display:flex;align-items:center;justify-content:center}
 #screen{width:100%;height:100%}
 #screen canvas{width:100%!important;height:100%!important;image-rendering:pixelated}
-#log{height:110px;background:#0d0d0d;color:#0f0;font-size:10px;overflow:auto;padding:6px;white-space:pre-wrap;font-family:monospace}
+#log{height:120px;background:#0d0d0d;color:#0f0;font-size:10px;overflow:auto;padding:6px;font-family:monospace;white-space:pre-wrap}
 </style>
-<script src="./build/libv86.js"></script>
 </head>
 <body>
 <header>
-<h1>MEU-XP LITE 256MB</h1>
+<h1>MEU-XP - 100% OFFLINE COM IMPORTADOR</h1>
+<div class="row">
+<button id="btnEngine">1️⃣ Importar BUILD/BIOS (4 arquivos)</button>
+<input type="file" id="engine" multiple accept=".js,.wasm,.bin" style="display:none">
+<span id="engineInfo" style="font-size:11px;opacity:.8">Nada importado</span>
+</div>
+<div id="checks">
+<span id="c-lib" class="badge no">libv86.js ❌</span>
+<span id="c-wasm" class="badge no">v86.wasm ❌</span>
+<span id="c-sea" class="badge no">seabios.bin ❌</span>
+<span id="c-vga" class="badge no">vgabios.bin ❌</span>
+<span id="c-iso" class="badge no">ISO ❌</span>
+</div>
+<div class="row">
 <input type="file" id="iso" accept=".iso">
-<button id="start">LIGAR</button>
+<button id="start" disabled>2️⃣ LIGAR</button>
 <button id="reset" style="background:#555">Reset</button>
-<button id="check" style="background:#8a5a0a">Testar arquivos</button>
+</div>
 </header>
-<div id="status">1- Clique Testar arquivos | 2- Escolha ISO | 3- LIGAR</div>
+<div id="status">Passo 1: Clique em Importar BUILD/BIOS e selecione os 4 arquivos que estão em Download: libv86.js, v86.wasm, seabios.bin, vgabios.bin</div>
 <div id="screen_container"><div id="screen"></div></div>
 <div id="log"></div>
 <script>
-const status=document.getElementById("status");
-const logEl=document.getElementById("log");
+const $ = s=>document.getElementById(s);
+const statusEl=$("status"), logEl=$("log");
+const badges={lib:$("c-lib"),wasm:$("c-wasm"),sea:$("c-sea"),vga:$("c-vga"),iso:$("c-iso")};
 function log(m){logEl.textContent+=m+"\n";logEl.scrollTop=logEl.scrollHeight;console.log(m);}
-function setStatus(m){status.textContent=m;}
+function setStatus(m){statusEl.textContent=m;}
+function okBadge(id,ok,text){badges[id].className="badge "+(ok?"ok":"no");badges[id].textContent=text+(ok?" ✓":" ❌");}
 
-let emulator=null,isoBuffer=null;
+let v86WasmUrl=null, seabiosUrl=null, vgabiosUrl=null, isoBuffer=null;
+let engineReady=false;
 
-document.getElementById("check").onclick=async()=>{
- logEl.textContent="";
- log("Testando build/bios no GitHub...");
- const files=["./build/libv86.js","./build/v86.wasm","./bios/seabios.bin","./bios/vgabios.bin"];
- for(let f of files){
-  try{
-   const r=await fetch(f,{method:"HEAD"});
-   if(r.ok){log(`✓ ${f} OK ${r.headers.get("content-length")||""} bytes`);}
-   else{log(`✗ ${f} ERRO ${r.status} - NAO SUBIU PRO GITHUB!`); setStatus(`FALTA ${f} no GitHub`); return;}
-  }catch(e){log(`✗ ${f} FETCH FALHOU: ${e}`); setStatus(`Erro rede ${f}`); return;}
- }
- log("Todos os 4 arquivos OK! Pode escolher ISO e LIGAR");
- setStatus("Arquivos OK - escolha ISO");
-};
+$("btnEngine").onclick=()=>$("engine").click();
 
-document.getElementById("iso").addEventListener("change", async e=>{
- const file=e.target.files[0];
- if(!file)return;
- setStatus(`Lendo ${file.name} ${(file.size/1024/1024).toFixed(0)}MB... aguarde`);
- log(`Lendo ISO ${file.name} ${(file.size/1024/1024).toFixed(1)}MB`);
- // le em pedaços pra não travar
- isoBuffer=await file.arrayBuffer();
- log(`ISO carregada OK ${isoBuffer.byteLength} bytes`);
- setStatus(`ISO OK - Clique LIGAR (256MB)`);
+$("engine").addEventListener("change", async e=>{
+  const files=[...e.target.files];
+  if(files.length===0)return;
+  log(`Importando ${files.length} arquivos...`);
+  let libFile=null;
+  for(let f of files){
+    const name=f.name.toLowerCase();
+    if(name.includes("libv86")){libFile=f; okBadge("lib",true,"libv86.js"); log(`✓ libv86.js ${ (f.size/1024).toFixed(0)}KB`);}
+    else if(name.includes("v86") && name.endsWith(".wasm")){v86WasmUrl=URL.createObjectURL(f); okBadge("wasm",true,"v86.wasm"); log(`✓ v86.wasm ${ (f.size/1024/1024).toFixed(2)}MB`);}
+    else if(name.includes("seabios")){seabiosUrl=URL.createObjectURL(f); okBadge("sea",true,"seabios.bin"); log(`✓ seabios.bin ${f.size} bytes`);}
+    else if(name.includes("vgabios")){vgabiosUrl=URL.createObjectURL(f); okBadge("vga",true,"vgabios.bin"); log(`✓ vgabios.bin ${f.size} bytes`);}
+  }
+  $("engineInfo").textContent=files.map(f=>f.name).join(", ");
+  if(libFile){
+    setStatus("Carregando libv86.js...");
+    // carrega o script dinamicamente
+    const url=URL.createObjectURL(libFile);
+    await new Promise((res,rej)=>{
+      const s=document.createElement("script");
+      s.src=url;
+      s.onload=()=>{log("libv86.js carregado, V86Starter=" + (typeof V86Starter)); res();};
+      s.onerror=()=>{log("ERRO ao carregar libv86.js"); rej();};
+      document.head.appendChild(s);
+    });
+    engineReady=typeof V86Starter!=="undefined";
+    if(engineReady){log("✓ V86Starter OK"); setStatus("BUILD/BIOS OK! Agora selecione a ISO");} 
+    else {log("✗ V86Starter ainda undefined - arquivo libv86.js errado"); setStatus("libv86.js inválido");}
+  }
+  checkReady();
 });
 
-document.getElementById("start").onclick=()=>{
- if(!isoBuffer){setStatus("Selecione ISO!");return;}
- if(emulator){try{emulator.stop();}catch(e){}}
- document.getElementById("screen").innerHTML="";
- logEl.textContent="";
- log("Iniciando v86 LITE 256MB...");
- setStatus("Iniciando... 20-40s");
+$("iso").addEventListener("change", async e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  setStatus(`Lendo ISO ${file.name} ${(file.size/1024/1024).toFixed(0)}MB...`);
+  log(`Lendo ISO ${file.name}...`);
+  isoBuffer=await file.arrayBuffer();
+  okBadge("iso",true,`ISO ${ (isoBuffer.byteLength/1024/1024).toFixed(0)}MB`);
+  log(`ISO OK ${isoBuffer.byteLength} bytes`);
+  setStatus("ISO OK - Clique LIGAR");
+  checkReady();
+});
 
- try{
- emulator=new V86Starter({
-  wasm_path:"./build/v86.wasm",
-  memory_size:256*1024*1024,
-  vga_memory_size:2*1024*1024,
-  screen_container:document.getElementById("screen"),
-  bios:{url:"./bios/seabios.bin"},
-  vga_bios:{url:"./bios/vgabios.bin"},
-  cdrom:{buffer:isoBuffer},
-  autostart:true,
-  acpi:false,
-  boot_order:0x123, // tenta cdrom primeiro
- });
- emulator.add_listener("emulator-ready",()=>{log("BIOS OK - bootando CD");setStatus("BIOS OK - Bootando ReactOS...");});
- emulator.add_listener("emulator-started",()=>{log("Emulador rodando");});
- emulator.add_listener("emulator-stopped",()=>{log("Emulador parou");setStatus("Parou");});
- }catch(err){log("ERRO FATAL: "+err);setStatus("Erro: "+err);}
+function checkReady(){
+  const all=engineReady && v86WasmUrl && seabiosUrl && vgabiosUrl && isoBuffer;
+  $("start").disabled=!all;
+  if(all)setStatus("TUDO PRONTO - Clique LIGAR (256MB)");
+}
+
+let emulator=null;
+$("start").onclick=()=>{
+  if(!engineReady || !isoBuffer){setStatus("Falta importar");return;}
+  $("screen").innerHTML=""; logEl.textContent="";
+  log("Iniciando v86 LITE 256MB - importado local...");
+  setStatus("Iniciando... 20-40s");
+  try{
+    emulator=new V86Starter({
+      wasm_path:v86WasmUrl,
+      memory_size:256*1024*1024,
+      vga_memory_size:2*1024*1024,
+      screen_container:document.getElementById("screen"),
+      bios:{url:seabiosUrl},
+      vga_bios:{url:vgabiosUrl},
+      cdrom:{buffer:isoBuffer},
+      autostart:true,
+      acpi:false,
+    });
+    emulator.add_listener("emulator-ready",()=>{log("BIOS OK - bootando CD"); setStatus("BIOS OK - Bootando...");});
+    emulator.add_listener("emulator-started",()=>{log("Rodando");});
+  }catch(err){log("ERRO FATAL: "+err); setStatus("Erro: "+err);}
 };
-
-document.getElementById("reset").onclick=()=>{if(emulator){emulator.restart();log("Reset");}};
-
-log("MEU-XP LITE carregado");
-log("Se travar 5min, é porque build/bios não subiram no GitHub. Clique Testar arquivos.");
+$("reset").onclick=()=>{if(emulator){emulator.restart(); log("Reset");}};
+log("Pronto para importar. Não precisa mais subir build/bios no GitHub!");
+log("1- Importar os 4 arquivos de Download | 2- Selecionar ISO");
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
