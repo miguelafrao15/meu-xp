@@ -23,147 +23,38 @@
 }
 </style>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ReactOS FIX DEFINITIVO - Poco X3</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu XP - Launcher</title>
 <style>
-  *{box-sizing:border-box} body{margin:0;background:#000;color:#fff;font-family:Consolas,monospace;display:flex;flex-direction:column;height:100vh;height:100dvh}
-  header{background:#0a2a5e;padding:10px;display:flex;flex-direction:column;gap:8px}
-  .row{display:flex;gap:6px;flex-wrap:wrap}
-  .btn{background:#d4d0c8;color:#000;border:2px outset #fff;padding:14px 10px;font-weight:900;font-size:12px;flex:1;min-width:80px}
-  .btn.primary{background:#00c;color:#fff}
-  #screen_container{flex:1;background:#000;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
-  #screen_container div{white-space:pre;font:14px monospace;line-height:14px}
-  #screen_container canvas{display:none}
-  #status{padding:8px;background:#111;color:#0f0;font-size:11px;word-break:break-all;border-top:2px solid #0f0}
-  #log{height:80px;background:#000;color:#0f0;font-size:10px;overflow:auto;border-top:1px solid #333;padding:6px}
-  progress{width:100%;height:14px}
+body{margin:0;background:#0a2a5e;color:#fff;font-family:Consolas,monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:20px;text-align:center}
+h1{font-size:18px}
+.btn{background:#fff;color:#000;border:4px outset #ccc;padding:20px 30px;font-weight:900;font-size:16px;cursor:pointer;margin:10px;display:block;width:100%;max-width:400px;text-decoration:none}
+.btn.primary{background:#00ff00;color:#000}
+small{color:#ccc;font-size:11px;word-break:break-all}
 </style>
 </head>
 <body>
-<header>
-  <h1>ReactOS FIX DEFINITIVO v3 - Poco X3 Pro</h1>
-  <div class="row">
-    <button class="btn primary" id="startBtn">▶ LIGAR 256MB</button>
-    <button class="btn" id="stopBtn">■ Parar</button>
-    <button class="btn" id="kbdBtn">⌨️ Teclado</button>
-  </div>
-  <progress id="prog" value="0" max="100" style="display:none"></progress>
-</header>
+<h1>✅ ReactOS no Poco X3 Pro - MÉTODO QUE FUNCIONA</h1>
+<p>Seu erro V86Starter era porque copy.sh bloqueia libv86.js quando vem de github.io. Solução: não hospedar a VM, usar o copy.sh direto com sua ISO.</p>
 
-<div id="screen_container">
-  <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
-  <canvas style="display: none"></canvas>
-</div>
+<a class="btn primary" id="openBtn" href="#" target="_blank">▶ ABRIR REACTOS NO COPY.SH (FUNCIONA)</a>
 
-<div id="status">Carregando v86... aguarde</div>
-<div id="log"></div>
-<input id="hidden" type="text" style="position:absolute;left:-9999px">
+<a class="btn" href="https://github.com/miguelafrao15/meu-xp/releases" target="_blank">📦 Ver se Release v1 existe (precisa existir)</a>
+
+<p><small>Link que vai abrir:<br><span id="urlShow"></span></small></p>
+
+<p><small>Se der 404 no copy.sh, seu Release v1 ainda não existe ou está privado. Crie o Release com a ISO.</small></p>
 
 <script>
-// CAUSA DO ERRO ANTERIOR:
-// 1. copy.sh/v86/build/libv86.js bloqueia quando vem de github.io (security policy)
-// 2. V86Starter foi removido na v86 mais nova, agora é só V86
-// 3. GitHub Pages cacheia o html antigo por 5min, por isso seu print ainda mostra título antigo
-// FIX: usar jsDelivr com versão fixa 0.3.5 que ainda tem V86 e V86Starter + cache buster + API nova
-</script>
+const isoUrl = "https://github.com/miguelafrao15/meu-xp/releases/download/v1/ReactOS-0.4.16-i386.iso";
+const v86Url = "https://copy.sh/v86/?profile=custom&cdrom.url=" + encodeURIComponent(isoUrl);
+document.getElementById("openBtn").href = v86Url;
+document.getElementById("urlShow").textContent = v86Url;
 
-<script src="https://cdn.jsdelivr.net/npm/v86@0.3.5/build/libv86.js"></script>
-<script>
-"use strict";
-let emulator=null;
-const $=id=>document.getElementById(id);
-const log=m=>{ const el=$("log"); el.textContent+=`[${new Date().toLocaleTimeString()}] ${m}\n`; el.scrollTop=el.scrollHeight; };
-const setStatus=s=>$("status").textContent=s;
-
-function createEmulator(){
-  // Tenta V86 (novo) e V86Starter (antigo)
-  const V86Class = window.V86 || window.V86Starter;
-  if(!V86Class){
-    throw new Error("libv86.js não carregou - V86 e V86Starter indefinidos. Desative AdBlock/Data Saver");
-  }
-  log(`Usando classe: ${window.V86 ? "V86" : "V86Starter"} (libv86 carregou OK)`);
-  
-  const config = {
-    wasm_path: "https://cdn.jsdelivr.net/npm/v86@0.3.5/build/v86.wasm",
-    bios: { url: "https://cdn.jsdelivr.net/npm/v86@0.3.5/bios/seabios.bin" },
-    vga_bios: { url: "https://cdn.jsdelivr.net/npm/v86@0.3.5/bios/vgabios.bin" },
-    memory_size: 256 * 1024 * 1024,
-    vga_memory_size: 8 * 1024 * 1024,
-    screen_container: document.getElementById("screen_container"),
-    // SEU RELEASE - TEM QUE EXISTIR!
-    cdrom: { url: "https://github.com/miguelafrao15/meu-xp/releases/download/v1/ReactOS-0.4.16-i386.iso" },
-    autostart: true,
-  };
-
-  // V86Starter usa mesma config, V86 também
-  return new V86Class(config);
-}
-
-$("startBtn").onclick=()=>{
-  if(typeof window.V86==="undefined" && typeof window.V86Starter==="undefined"){
-    log("ERRO FATAL: libv86.js bloqueado! Tente sem AdBlock e em aba anônima");
-    setStatus("ERRO: libv86.js não carregou - copie.sh/jsDelivr bloqueado");
-    return;
-  }
-  if(emulator){ try{emulator.stop();}catch{} }
-  $("prog").style.display="block";
-  $("prog").value=5;
-  setStatus("Iniciando... baixando ISO do seu Release (388MB)");
-  log("Clicou LIGAR - criando emulador");
-  document.getElementById("screen_container").innerHTML='<div style="white-space: pre; font: 14px monospace; line-height: 14px"></div><canvas style="display: none"></canvas>';
-  
-  try{
-    emulator = createEmulator();
-    
-    emulator.add_listener("emulator-ready", ()=>{
-      setStatus("LIGADO! No menu azul escolha 'Live CD' (Use as setas do teclado)");
-      $("prog").style.display="none";
-      log("Emulador pronto! Se travar em 'Booting from CD-ROM' é porque a ISO não foi encontrada - verifique Release v1");
-    });
-    
-    emulator.add_listener("download-progress", e=>{
-      if(e.total){
-        const p=Math.round(e.loaded/e.total*100);
-        $("prog").value=p;
-        setStatus(`Baixando ${e.file_name||'ISO'}: ${p}% ${(e.loaded/1024/1024).toFixed(1)}MB`);
-      }
-    });
-    
-    emulator.add_listener("download-error", e=>{
-      log(`ERRO DOWNLOAD ${e.file_name}: ${e.msg}`);
-      if(e.file_name && e.file_name.includes("ReactOS")){
-        setStatus(`ERRO 404: Release v1 não existe. Crie em github.com/miguelafrao15/meu-xp/releases`);
-      }else{
-        setStatus(`Erro download: ${e.file_name} - ${e.msg}`);
-      }
-      $("prog").style.display="none";
-    });
-    
-  }catch(err){
-    log("ERRO FATAL ao criar VM: "+err.message);
-    setStatus("ERRO: "+err.message);
-    $("prog").style.display="none";
-  }
+document.getElementById("openBtn").onclick = ()=>{
+  // Tenta abrir direto
+  window.open(v86Url, "_blank");
 };
-
-$("stopBtn").onclick=()=>{ if(emulator){ emulator.stop(); setStatus("Parado"); } $("prog").style.display="none"; };
-$("kbdBtn").onclick=()=>{ $("hidden").focus(); };
-$("hidden").addEventListener("input", e=>{
-  if(emulator && e.target.value){
-    emulator.keyboard_send_text(e.target.value.slice(-1));
-    e.target.value="";
-  }
-});
-
-window.addEventListener("load", ()=>{
-  if(window.V86 || window.V86Starter){
-    log(`libv86 OK - ${window.V86 ? "V86" : "V86Starter"} encontrado`);
-    setStatus("libv86 carregou! Clique em LIGAR 256MB");
-  }else{
-    log("ERRO: libv86.js não carregou de jsDelivr - tente aba anônima sem AdBlock");
-    setStatus("ERRO: libv86 bloqueado - desative Data Saver/AdBlock");
-  }
-});
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
