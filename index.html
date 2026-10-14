@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ReactOS 0.4.16 - FIX - Poco X3</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;background:#000;color:#fff;font-family:Consolas,monospace;display:flex;flex-direction:column;height:100vh;height:100dvh}
+  header{background:#0a2a5e;padding:10px;display:flex;flex-direction:column;gap:8px}
+  h1{font-size:11px;margin:0;word-break:break-all}
+  .row{display:flex;gap:6px;flex-wrap:wrap}
+  .btn{background:#d4d0c8;color:#000;border:2px outset #fff;padding:12px;font-weight:700;font-size:11px;flex:1;min-width:80px}
+  .btn.primary{background:#0000cc;color:#fff;border-color:#fff} .btn:active{border-style:inset}
+  #screen_container{flex:1;background:#000;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #screen_container canvas{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+  #status{padding:8px;background:#111;color:#0f0;font-size:10px;word-break:break-all}
+  #log{height:70px;background:#000;color:#0f0;font-size:9px;overflow:auto;border-top:1px solid #222;padding:4px}
+  progress{width:100%;height:12px}
+</style>
+<!-- FIX: usando jsDelivr em vez de copy.sh que bloqueia no GitHub Pages -->
+<script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
+</head>
+<body>
+<header>
+  <h1>ReactOS 0.4.16 - miguelafrao15/meu-xp - FIX</h1>
+  <div class="row">
+    <button class="btn primary" id="startBtn">▶ LIGAR 256MB</button>
+    <button class="btn" id="stopBtn">■ Parar</button>
+    <button class="btn" id="kbdBtn">⌨️ Teclado</button>
+    <button class="btn" id="cadBtn">Ctrl+Alt+Del</button>
+  </div>
+  <progress id="prog" value="0" max="100" style="display:none"></progress>
+</header>
+
+<div id="screen_container"><div id="screen"></div><canvas id="vga"></canvas></div>
+<div id="status">Pronto. Clique em LIGAR. Se der 404, seu Release v1 ainda não existe.</div>
+<div id="log"></div>
+<input type="text" id="hidden" style="position:absolute;left:-9999px">
+
+<script>
+let emulator=null;
+const $=id=>document.getElementById(id);
+const log=m=>{ const l=$("log"); l.textContent+=`[${new Date().toLocaleTimeString()}] ${m}\n`; l.scrollTop=l.scrollHeight; };
+const setStatus=s=>$("status").textContent=s;
+
+function getCfg(){
+  return {
+    wasm_path:"https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
+    bios:{url:"https://cdn.jsdelivr.net/npm/v86@latest/bios/seabios.bin"},
+    vga_bios:{url:"https://cdn.jsdelivr.net/npm/v86@latest/bios/vgabios.bin"},
+    memory_size:256*1024*1024,
+    vga_memory_size:8*1024*1024,
+    screen_container:$("screen_container"),
+    // SEU RELEASE - TEM QUE EXISTIR
+    cdrom:{url:"https://github.com/miguelafrao15/meu-xp/releases/download/v1/ReactOS-0.4.16-i386.iso"},
+    acpi:true,
+    autostart:true,
+  };
+}
+
+$("startBtn").onclick=async()=>{
+  if(typeof V86Starter==="undefined"){
+    log("ERRO: libv86.js não carregou. Verifique internet / adblock");
+    setStatus("ERRO: V86Starter não carregou - sem internet ou bloqueado");
+    return;
+  }
+  if(emulator){ try{emulator.stop();}catch{} }
+  $("prog").style.display="block";
+  $("prog").value=0;
+  setStatus("Baixando ISO do seu Release (388MB) - 4G no Poco demora 2-3min");
+  log("Iniciando download do Release v1/ReactOS-0.4.16-i386.iso");
+  $("screen").innerHTML="";
+  try{
+    emulator=new V86Starter(getCfg());
+    emulator.add_listener("emulator-ready", ()=>{
+      setStatus("LIGADO! Escolha 'Live CD' no menu azul do ReactOS");
+      $("prog").style.display="none";
+      log("VM pronta. Se ficar tela preta >30s, é porque o Release v1 não existe ainda");
+    });
+    emulator.add_listener("download-progress", e=>{
+      if(e.total){
+        const p=Math.round(e.loaded/e.total*100);
+        $("prog").value=p;
+        setStatus(`Baixando ISO: ${p}% - ${(e.loaded/1024/1024).toFixed(1)}/${(e.total/1024/1024).toFixed(1)}MB`);
+      }
+    });
+    emulator.add_listener("download-error", e=>{
+      log(`ERRO DOWNLOAD ${e.file_name}: ${e.msg} - Verifique se criou o Release v1`);
+      setStatus(`ERRO 404: Release v1 não encontrado. Crie o Release com a ISO`);
+      $("prog").style.display="none";
+    });
+  }catch(err){ log("ERRO FATAL: "+err.message); setStatus(err.message); $("prog").style.display="none"; }
+};
+
+$("stopBtn").onclick=()=>{ if(emulator) emulator.stop(); setStatus("Parado"); $("prog").style.display="none"; };
+$("kbdBtn").onclick=()=>{ $("hidden").focus(); };
+$("cadBtn").onclick=()=>{ if(emulator) emulator.keyboard_send_scancodes([0x1D,0x38,0x53]); log("Ctrl+Alt+Del"); };
+$("hidden").addEventListener("input", e=>{
+  if(emulator && e.target.value){ emulator.keyboard_send_text(e.target.value.slice(-1)); e.target.value=""; }
+});
+
+log("FIX aplicado: usando jsDelivr CDN em vez de copy.sh (copy.sh bloqueia no GitHub Pages)");
+log("Verifique se o Release v1 existe em: github.com/miguelafrao15/meu-xp/releases");
+</script>
+</body>
+</html>
