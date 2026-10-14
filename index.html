@@ -50,7 +50,7 @@ button:disabled{opacity:.4}
 <h1>MEU-XP - 100% OFFLINE COM IMPORTADOR</h1>
 <div class="row">
 <button id="btnEngine">1️⃣ Importar BUILD/BIOS (4 arquivos)</button>
-<input type="file" id="engine" multiple accept=".js,.wasm,.bin" style="display:none">
+<input type="file" id="engine" multiple accept="*/*" style="display:none">
 <span id="engineInfo" style="font-size:11px;opacity:.8">Nada importado</span>
 </div>
 <div id="checks">
@@ -61,12 +61,12 @@ button:disabled{opacity:.4}
 <span id="c-iso" class="badge no">ISO ❌</span>
 </div>
 <div class="row">
-<input type="file" id="iso" accept=".iso">
+<input type="file" id="iso" accept="*/*,.iso">
 <button id="start" disabled>2️⃣ LIGAR</button>
 <button id="reset" style="background:#555">Reset</button>
 </div>
 </header>
-<div id="status">Passo 1: Clique em Importar BUILD/BIOS e selecione os 4 arquivos que estão em Download: libv86.js, v86.wasm, seabios.bin, vgabios.bin</div>
+<div id="status">Passo 1: Clique em Importar BUILD/BIOS e selecione TODOS de uma vez: libv86.js + v86.wasm + seabios.bin + vgabios.bin (segure para selecionar varios no Android)</div>
 <div id="screen_container"><div id="screen"></div></div>
 <div id="log"></div>
 <script>
